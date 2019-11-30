@@ -1,15 +1,15 @@
 /*
  * UART_DMA.h
  *
- *  Created on: 27.10.2019
+ *  Created on: 09.12.2019
  *      Author: Mateusz Salamon
  *		www.msalamon.pl
  *
- *      Website: https://msalamon.pl/odbieranie-uart-po-dma-to-bulka-z-maslem-lekcja-z-kursu-stm32/
- *      GitHub:  https://github.com/lamik/UART_DMA_receiving
+ *      Website: https://msalamon.pl/odbieranie-uart-z-dma-na-f103-to-rowniez-jest-proste/
+ *      GitHub:  https://github.com/lamik/UART_DMA_receiving_F103
  *      Contact: mateusz@msalamon.pl
 */
-#include "stm32f4xx_hal.h"
+#include "main.h"
 
 #define DMA_RX_BUFFER_SIZE          64
 #define UART_BUFFER_SIZE            256

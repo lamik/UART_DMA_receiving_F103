@@ -15,7 +15,15 @@
   *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
-  */
+  *
+  *  Created on: 09.12.2019
+  *      Author: Mateusz Salamon
+  *		 www.msalamon.pl
+  *
+  *      Website: https://msalamon.pl/odbieranie-uart-z-dma-na-f103-to-rowniez-jest-proste/
+  *      GitHub:  https://github.com/lamik/UART_DMA_receiving_F103
+  *      Contact: mateusz@msalamon.pl
+*/
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -26,7 +34,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "UART_DMA.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,6 +45,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+UARTDMA_HandleTypeDef huartdma;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,7 +56,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+char ParseBuffer[8];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -92,13 +102,25 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  UARTDMA_Init(&huartdma, &huart2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(UARTDMA_IsDataReady(&huartdma))
+	  {
+		  UARTDMA_GetLineFromBuffer(&huartdma, ParseBuffer);
+		  if(strcmp(ParseBuffer, "ON") == 0)
+		  {
+			  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+		  }
+		  else if(strcmp(ParseBuffer, "OFF")  == 0)
+		  {
+			  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+		  }
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

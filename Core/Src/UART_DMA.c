@@ -1,12 +1,12 @@
 /*
  * UART_DMA.c
  *
- *  Created on: 27.10.2019
+ *  Created on: 09.12.2019
  *      Author: Mateusz Salamon
  *		www.msalamon.pl
  *
- *      Website: https://msalamon.pl/odbieranie-uart-po-dma-to-bulka-z-maslem-lekcja-z-kursu-stm32/
- *      GitHub:  https://github.com/lamik/UART_DMA_receiving
+ *      Website: https://msalamon.pl/odbieranie-uart-z-dma-na-f103-to-rowniez-jest-proste/
+ *      GitHub:  https://github.com/lamik/UART_DMA_receiving_F103
  *      Contact: mateusz@msalamon.pl
  */
 
@@ -22,8 +22,10 @@ void UARTDMA_UartIrqHandler(UARTDMA_HandleTypeDef *huartdma)
 		volatile uint32_t tmp;
 		tmp = huartdma->huart->Instance->SR;                      // Read status register
 		tmp = huartdma->huart->Instance->DR;                      // Read data register
-		huartdma->huart->hdmarx->Instance->CR &= ~DMA_SxCR_EN; // Disable DMA - it will force Transfer Complete interrupt if it's enabled
+		huartdma->huart->hdmarx->Instance->CCR &= ~DMA_CCR_EN; 	  // Disable DMA - it will force Transfer Complete interrupt if it's enabled
+																  // BUT! It's only for DMA Streams(i.e F4), not for Channels like there in F103!
 		tmp = tmp; // For unused warning
+		UARTDMA_DmaIrqHandler(huartdma); // Since DMA IRQ won't start independently for Channels, we have to handle it manually
 	}
 }
 
@@ -36,17 +38,16 @@ void UARTDMA_DmaIrqHandler(UARTDMA_HandleTypeDef *huartdma)
 	typedef struct
 	{
 		__IO uint32_t ISR;   // DMA interrupt status register
-		__IO uint32_t Reserved0;
 		__IO uint32_t IFCR;  // DMA interrupt flag clear register
 	} DMA_Base_Registers;
 
-	DMA_Base_Registers *DmaRegisters = (DMA_Base_Registers *) huartdma->huart->hdmarx->StreamBaseAddress; // Take registers base address
+	DMA_Base_Registers *DmaRegisters = (DMA_Base_Registers *) huartdma->huart->hdmarx->DmaBaseAddress; // Take registers base address
 
 	if (__HAL_DMA_GET_IT_SOURCE(huartdma->huart->hdmarx, DMA_IT_TC) != RESET) // Check if interrupt source is Transfer Complete
 	{
-		DmaRegisters->IFCR = DMA_FLAG_TCIF0_4 << huartdma->huart->hdmarx->StreamIndex;	// Clear Transfer Complete flag
+		DmaRegisters->IFCR = DMA_IFCR_CTCIF1 << huartdma->huart->hdmarx->ChannelIndex;	// Clear Transfer Complete flag
 
-		Length = DMA_RX_BUFFER_SIZE - huartdma->huart->hdmarx->Instance->NDTR; // Get the Length of transfered data
+		Length = DMA_RX_BUFFER_SIZE - huartdma->huart->hdmarx->Instance->CNDTR; // Get the Length of transfered data
 
 		UartBufferPointer = huartdma->UART_Buffer;
 		DmaBufferPointer = 	huartdma->DMA_RX_Buffer;
@@ -70,10 +71,10 @@ void UARTDMA_DmaIrqHandler(UARTDMA_HandleTypeDef *huartdma)
 			}
 		}
 
-		DmaRegisters->IFCR = 0x3FU << huartdma->huart->hdmarx->StreamIndex; 		// Clear all interrupts
-		huartdma->huart->hdmarx->Instance->M0AR = (uint32_t) huartdma->DMA_RX_Buffer; // Set memory address for DMA again
-		huartdma->huart->hdmarx->Instance->NDTR = DMA_RX_BUFFER_SIZE; // Set number of bytes to receive
-		huartdma->huart->hdmarx->Instance->CR |= DMA_SxCR_EN;            	// Start DMA transfer
+		DmaRegisters->IFCR = 0x0FU << huartdma->huart->hdmarx->ChannelIndex; 		// Clear all interrupts
+		huartdma->huart->hdmarx->Instance->CMAR = (uint32_t) huartdma->DMA_RX_Buffer; // Set memory address for DMA again
+		huartdma->huart->hdmarx->Instance->CNDTR = DMA_RX_BUFFER_SIZE; // Set number of bytes to receive
+		huartdma->huart->hdmarx->Instance->CCR |= DMA_CCR_EN;            	// Start DMA transfer
 	}
 }
 
@@ -126,5 +127,5 @@ void UARTDMA_Init(UARTDMA_HandleTypeDef *huartdma, UART_HandleTypeDef *huart)
 
 	HAL_UART_Receive_DMA(huartdma->huart, huartdma->DMA_RX_Buffer, DMA_RX_BUFFER_SIZE); // Run DMA for whole DMA buffer
 
-	huartdma->huart->hdmarx->Instance->CR &= ~DMA_SxCR_HTIE; // Disable DMA Half Complete interrupt
+	huartdma->huart->hdmarx->Instance->CCR &= ~DMA_CCR_HTIE; // Disable DMA Half Complete interrupt
 }
